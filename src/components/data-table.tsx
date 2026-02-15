@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Pagination,
   PaginationContent,
@@ -214,12 +213,12 @@ export function DataTable({
       </div>
 
       {/* 表格 */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
               {hasPrimaryKey && (
-                <TableHead className="w-10 min-w-10 max-w-10">
+                <TableHead className="w-10 min-w-10 max-w-10 sticky top-0 z-10 bg-background">
                   <Checkbox
                     checked={rows.length > 0 && selectedIds.size === rows.length}
                     onCheckedChange={toggleSelectAll}
@@ -228,7 +227,7 @@ export function DataTable({
                 </TableHead>
               )}
               {columns.map((column) => (
-                <TableHead key={column.name}>
+                <TableHead key={column.name} className="sticky top-0 z-10 bg-background text-foreground">
                   <div className="flex items-center gap-1 truncate">
                     <span className="truncate">{column.name}</span>
                     {column.isPrimaryKey && (
@@ -292,15 +291,11 @@ export function DataTable({
             )}
           </TableBody>
         </Table>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex justify-between items-center p-3 border-t">
-          <div className="text-muted-foreground text-sm">
-            第 {page} / {totalPages} 页
-          </div>
+        <div className="flex justify-end items-center p-3 border-t">
           <Pagination>
             <PaginationContent>
               <PaginationItem>

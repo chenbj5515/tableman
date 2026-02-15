@@ -86,13 +86,25 @@ export async function GET(
 
     // 构建筛选条件
     const searchParams = request.nextUrl.searchParams;
-    const filters: { column: string; value: string }[] = [];
+    const filters: { column: string; operator: string; value: string }[] = [];
+
+    // 支持的操作符
+    const OPERATORS = ["equals", "contains", "starts_with", "ends_with"];
+    const columnNames = new Set(columns.map((c) => c.name));
 
     // 从 URL 参数中提取筛选条件
-    for (const column of columns) {
-      const value = searchParams.get(column.name);
-      if (value !== null && value !== "") {
-        filters.push({ column: column.name, value });
+    // 格式: column__operator=value (例如: channel_id__equals=xxx)
+    // 或者旧格式: column=value (默认 equals)
+    for (const [key, value] of searchParams.entries()) {
+      if (!value || key === "page" || key === "pageSize") continue;
+
+      // 检查是否是新格式 column__operator
+      const parts = key.split("__");
+      if (parts.length === 2 && columnNames.has(parts[0]) && OPERATORS.includes(parts[1])) {
+        filters.push({ column: parts[0], operator: parts[1], value });
+      } else if (columnNames.has(key)) {
+        // 旧格式，默认使用 equals
+        filters.push({ column: key, operator: "equals", value });
       }
     }
 
@@ -102,9 +114,22 @@ export async function GET(
 
     if (filters.length > 0) {
       const conditions = filters.map((filter, index) => {
-        values.push(filter.value);
-        // 使用 CAST 来处理不同类型的比较
-        return `"${filter.column}"::text = $${index + 1}`;
+        const paramIndex = index + 1;
+        switch (filter.operator) {
+          case "contains":
+            values.push(`%${filter.value}%`);
+            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "starts_with":
+            values.push(`${filter.value}%`);
+            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "ends_with":
+            values.push(`%${filter.value}`);
+            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "equals":
+          default:
+            values.push(filter.value);
+            return `"${filter.column}"::text = $${paramIndex}`;
+        }
       });
       query += ` WHERE ${conditions.join(" AND ")}`;
     }
@@ -119,15 +144,31 @@ export async function GET(
 
     const result = await db.query(query, values);
 
-    // 获取总行数
+    // 获取总行数（使用相同的筛选条件）
     let countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
+    const countValues: string[] = [];
     if (filters.length > 0) {
       const conditions = filters.map((filter, index) => {
-        return `"${filter.column}"::text = $${index + 1}`;
+        const paramIndex = index + 1;
+        switch (filter.operator) {
+          case "contains":
+            countValues.push(`%${filter.value}%`);
+            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "starts_with":
+            countValues.push(`${filter.value}%`);
+            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "ends_with":
+            countValues.push(`%${filter.value}`);
+            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "equals":
+          default:
+            countValues.push(filter.value);
+            return `"${filter.column}"::text = $${paramIndex}`;
+        }
       });
       countQuery += ` WHERE ${conditions.join(" AND ")}`;
     }
-    const countResult = await db.query(countQuery, values);
+    const countResult = await db.query(countQuery, countValues);
     const total = parseInt(countResult.rows[0].total, 10);
 
     return NextResponse.json({
