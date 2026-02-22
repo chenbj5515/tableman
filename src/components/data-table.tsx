@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -108,6 +109,21 @@ export function DataTable({
       setIsDeleting(false);
     }
   };
+
+  // 复制到剪切板
+  const copyToClipboard = useCallback(async (text: string, label?: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(label ? `已复制: ${label}` : "已复制");
+    } catch {
+      toast.error("复制失败");
+    }
+  }, []);
+
+  const copyColumnName = useCallback(
+    (columnName: string) => copyToClipboard(columnName, columnName),
+    [copyToClipboard]
+  );
 
   // 格式化单元格值
   const formatCellValue = (value: unknown): string => {
@@ -229,7 +245,13 @@ export function DataTable({
               {columns.map((column) => (
                 <TableHead key={column.name} className="sticky top-0 z-10 bg-background text-foreground">
                   <div className="flex items-center gap-1 truncate">
-                    <span className="truncate">{column.name}</span>
+                    <span 
+                      className="truncate cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => copyColumnName(column.name)}
+                      title="点击复制列名"
+                    >
+                      {column.name}
+                    </span>
                     {column.isPrimaryKey && (
                       <span className="text-primary text-xs shrink-0">(PK)</span>
                     )}
@@ -272,19 +294,27 @@ export function DataTable({
                         )}
                       </TableCell>
                     )}
-                    {columns.map((column) => (
-                      <TableCell key={column.name} title={formatCellValue(row[column.name])}>
-                        <span
-                          className={
-                            row[column.name] === null
-                              ? "text-muted-foreground italic"
-                              : ""
-                          }
+                    {columns.map((column) => {
+                      const formatted = formatCellValue(row[column.name]);
+                      return (
+                        <TableCell
+                          key={column.name}
+                          title={formatted}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => copyToClipboard(formatted)}
                         >
-                          {formatCellValue(row[column.name])}
-                        </span>
-                      </TableCell>
-                    ))}
+                          <span
+                            className={
+                              row[column.name] === null
+                                ? "text-muted-foreground italic"
+                                : ""
+                            }
+                          >
+                            {formatted}
+                          </span>
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 );
               })

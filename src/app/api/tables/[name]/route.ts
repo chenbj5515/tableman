@@ -89,7 +89,8 @@ export async function GET(
     const filters: { column: string; operator: string; value: string }[] = [];
 
     // 支持的操作符
-    const OPERATORS = ["equals", "contains", "starts_with", "ends_with"];
+    const OPERATORS = ["equals", "contains", "starts_with", "ends_with", "is_null", "is_not_null"];
+    const NO_VALUE_OPERATORS = ["is_null", "is_not_null"];
     const columnNames = new Set(columns.map((c) => c.name));
 
     // 从 URL 参数中提取筛选条件
@@ -113,20 +114,28 @@ export async function GET(
     const values: string[] = [];
 
     if (filters.length > 0) {
-      const conditions = filters.map((filter, index) => {
-        const paramIndex = index + 1;
+      let paramIndex = 0;
+      const conditions = filters.map((filter) => {
         switch (filter.operator) {
           case "contains":
+            paramIndex++;
             values.push(`%${filter.value}%`);
             return `"${filter.column}"::text ILIKE $${paramIndex}`;
           case "starts_with":
+            paramIndex++;
             values.push(`${filter.value}%`);
             return `"${filter.column}"::text ILIKE $${paramIndex}`;
           case "ends_with":
+            paramIndex++;
             values.push(`%${filter.value}`);
             return `"${filter.column}"::text ILIKE $${paramIndex}`;
+          case "is_null":
+            return `"${filter.column}" IS NULL`;
+          case "is_not_null":
+            return `"${filter.column}" IS NOT NULL`;
           case "equals":
           default:
+            paramIndex++;
             values.push(filter.value);
             return `"${filter.column}"::text = $${paramIndex}`;
         }
@@ -148,22 +157,30 @@ export async function GET(
     let countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
     const countValues: string[] = [];
     if (filters.length > 0) {
-      const conditions = filters.map((filter, index) => {
-        const paramIndex = index + 1;
+      let countParamIndex = 0;
+      const conditions = filters.map((filter) => {
         switch (filter.operator) {
           case "contains":
+            countParamIndex++;
             countValues.push(`%${filter.value}%`);
-            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+            return `"${filter.column}"::text ILIKE $${countParamIndex}`;
           case "starts_with":
+            countParamIndex++;
             countValues.push(`${filter.value}%`);
-            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+            return `"${filter.column}"::text ILIKE $${countParamIndex}`;
           case "ends_with":
+            countParamIndex++;
             countValues.push(`%${filter.value}`);
-            return `"${filter.column}"::text ILIKE $${paramIndex}`;
+            return `"${filter.column}"::text ILIKE $${countParamIndex}`;
+          case "is_null":
+            return `"${filter.column}" IS NULL`;
+          case "is_not_null":
+            return `"${filter.column}" IS NOT NULL`;
           case "equals":
           default:
+            countParamIndex++;
             countValues.push(filter.value);
-            return `"${filter.column}"::text = $${paramIndex}`;
+            return `"${filter.column}"::text = $${countParamIndex}`;
         }
       });
       countQuery += ` WHERE ${conditions.join(" AND ")}`;

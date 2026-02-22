@@ -51,7 +51,11 @@ const OPERATORS = [
   { value: "contains", label: "包含" },
   { value: "starts_with", label: "开头是" },
   { value: "ends_with", label: "结尾是" },
+  { value: "is_null", label: "为 null" },
+  { value: "is_not_null", label: "不为 null" },
 ];
+
+const NO_VALUE_OPERATORS = ["is_null", "is_not_null"];
 
 export function FilterBar({
   columns,
@@ -120,10 +124,16 @@ export function FilterBar({
   const applyFilters = (conditionsToApply: FilterCondition[] = conditions) => {
     const activeFilters: Record<string, string> = {};
     conditionsToApply.forEach((c) => {
-      if (c.column && c.value) {
-        // 使用 column__operator=value 格式
-        const key = `${c.column}__${c.operator}`;
-        activeFilters[key] = c.value;
+      if (c.column) {
+        // is_null 和 is_not_null 不需要值
+        if (NO_VALUE_OPERATORS.includes(c.operator)) {
+          const key = `${c.column}__${c.operator}`;
+          activeFilters[key] = "1"; // 用占位值
+        } else if (c.value) {
+          // 使用 column__operator=value 格式
+          const key = `${c.column}__${c.operator}`;
+          activeFilters[key] = c.value;
+        }
       }
     });
     onFilterChange(activeFilters);
@@ -277,16 +287,18 @@ export function FilterBar({
                 </SelectContent>
               </Select>
 
-              {/* 值输入框 */}
-              <Input
-                placeholder="输入值"
-                value={condition.value}
-                onChange={(e) =>
-                  updateCondition(condition.id, "value", e.target.value)
-                }
-                onKeyDown={handleKeyDown}
-                className="flex-1 h-8 text-sm min-w-32"
-              />
+              {/* 值输入框 - is_null 和 is_not_null 不需要 */}
+              {!NO_VALUE_OPERATORS.includes(condition.operator) && (
+                <Input
+                  placeholder="输入值"
+                  value={condition.value}
+                  onChange={(e) =>
+                    updateCondition(condition.id, "value", e.target.value)
+                  }
+                  onKeyDown={handleKeyDown}
+                  className="flex-1 h-8 text-sm min-w-32"
+                />
+              )}
             </div>
           ))}
 
