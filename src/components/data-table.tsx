@@ -234,7 +234,7 @@ export function DataTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               {hasPrimaryKey && (
-                <TableHead className="w-10 min-w-10 max-w-10 sticky top-0 z-10 bg-background">
+                <TableHead className="top-0 z-10 sticky bg-background w-10 min-w-10 max-w-10">
                   <Checkbox
                     checked={rows.length > 0 && selectedIds.size === rows.length}
                     onCheckedChange={toggleSelectAll}
@@ -243,10 +243,10 @@ export function DataTable({
                 </TableHead>
               )}
               {columns.map((column) => (
-                <TableHead key={column.name} className="sticky top-0 z-10 bg-background text-foreground">
+                <TableHead key={column.name} className="top-0 z-10 sticky bg-background text-foreground">
                   <div className="flex items-center gap-1 truncate">
                     <span 
-                      className="truncate cursor-pointer hover:text-primary transition-colors"
+                      className="hover:text-primary truncate transition-colors cursor-pointer"
                       onClick={() => copyColumnName(column.name)}
                       title="点击复制列名"
                     >
@@ -280,7 +280,7 @@ export function DataTable({
 
                 return (
                   <TableRow
-                    key={rowId ?? index}
+                    key={rowId !== null ? `${rowId}-${index}` : index}
                     data-state={isSelected ? "selected" : undefined}
                   >
                     {hasPrimaryKey && (
@@ -300,7 +300,7 @@ export function DataTable({
                         <TableCell
                           key={column.name}
                           title={formatted}
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          className="hover:bg-muted/50 transition-colors cursor-pointer"
                           onClick={() => copyToClipboard(formatted)}
                         >
                           <span
