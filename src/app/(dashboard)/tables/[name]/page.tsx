@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, use } from "react";
+import { toast } from "sonner";
 import { FilterBar } from "@/components/filter-bar";
 import { DataTable } from "@/components/data-table";
 
@@ -88,10 +89,10 @@ export default function TablePage({ params }: TablePageProps) {
       if (!response.ok) throw new Error("删除失败");
 
       const result = await response.json();
-      alert(`成功删除 ${result.deleted} 行数据`);
+      toast.success(`成功删除 ${result.deleted} 行数据`);
       fetchTableData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "删除失败");
+      toast.error(err instanceof Error ? err.message : "删除失败");
     }
   };
 
