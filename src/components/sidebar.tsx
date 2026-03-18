@@ -3,71 +3,66 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Database, Table2 } from "lucide-react";
+import { Database, Users, Table2 } from "lucide-react";
 
-interface SidebarProps {
-  tables: string[];
-  selectedTable: string | null;
-  isLoading?: boolean;
-}
+const NAV_ITEMS = [
+  {
+    href: "/",
+    icon: Database,
+    label: "数据库一览",
+  },
+  {
+    href: "/users",
+    icon: Users,
+    label: "用户管理",
+  },
+];
 
-export function Sidebar({
-  tables,
-  selectedTable,
-  isLoading,
-}: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
-  const basePath = "/tables";
+
+  const isActive = (href: string) => {
+    if (href === "/") {
+      return pathname === "/" || pathname?.startsWith("/tables");
+    }
+    return pathname === href || pathname?.startsWith(href);
+  };
 
   return (
-    <div className="w-64 border-r bg-muted/30 flex flex-col h-full">
-      <div className="p-4 border-b">
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-foreground hover:text-foreground/80 transition-colors"
-        >
-          <Database className="size-5" />
-          <h2 className="font-semibold">数据库表</h2>
-        </Link>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="p-2">
-          {isLoading ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
-              加载中...
-            </div>
-          ) : tables.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
-              没有找到表
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {tables.map((table) => {
-                const href = `${basePath}/${encodeURIComponent(table)}`;
-                const isActive = selectedTable === table || pathname === href;
-                return (
-                  <Link
-                    key={table}
-                    href={href}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    <Table2 className="size-4 shrink-0" />
-                    <span className="truncate">{table}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+    <div className="w-16 bg-neutral-900 flex flex-col h-dvh shrink-0">
+      <div className="p-3 flex justify-center border-b border-neutral-800">
+        <div className="size-10 rounded-xl bg-neutral-800 flex items-center justify-center">
+          <Table2 className="size-5 text-white" />
         </div>
-      </ScrollArea>
-      <div className="p-3 border-t text-xs text-muted-foreground">
-        共 {tables.length} 个表
+      </div>
+
+      <nav className="flex-1 flex flex-col items-center gap-2 p-3">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "size-10 rounded-xl flex items-center justify-center transition-colors",
+                active
+                  ? "bg-white text-neutral-900"
+                  : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+              )}
+              title={item.label}
+              aria-label={item.label}
+            >
+              <Icon className="size-5" />
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-3 flex justify-center border-t border-neutral-800">
+        <div className="size-10 rounded-full bg-neutral-700 flex items-center justify-center text-white text-sm font-medium">
+          T
+        </div>
       </div>
     </div>
   );

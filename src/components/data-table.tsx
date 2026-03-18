@@ -21,7 +21,15 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Trash2, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Trash2, Table2 } from "lucide-react";
 
 interface Column {
   name: string;
@@ -53,11 +61,10 @@ export function DataTable({
 }: DataTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 获取主键列
   const pkColumn = columns.find((col) => col.isPrimaryKey);
 
-  // 获取行的主键值
   const getRowId = (row: Record<string, unknown>): string | number | null => {
     if (!pkColumn) return null;
     const value = row[pkColumn.name];
@@ -67,7 +74,6 @@ export function DataTable({
     return null;
   };
 
-  // 切换单行选择
   const toggleRowSelection = (id: string | number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -80,7 +86,6 @@ export function DataTable({
     });
   };
 
-  // 切换全选
   const toggleSelectAll = () => {
     if (selectedIds.size === rows.length) {
       setSelectedIds(new Set());
@@ -92,25 +97,22 @@ export function DataTable({
     }
   };
 
-  // 处理删除
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
     if (selectedIds.size === 0) return;
+    setConfirmOpen(true);
+  };
 
-    const confirmed = window.confirm(
-      `确定要删除选中的 ${selectedIds.size} 行数据吗？此操作不可撤销。`
-    );
-    if (!confirmed) return;
-
+  const handleDeleteConfirm = async () => {
     setIsDeleting(true);
     try {
       await onDelete(Array.from(selectedIds));
       setSelectedIds(new Set());
+      setConfirmOpen(false);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // 复制到剪切板
   const copyToClipboard = useCallback(async (text: string, label?: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -125,7 +127,6 @@ export function DataTable({
     [copyToClipboard]
   );
 
-  // 格式化单元格值
   const formatCellValue = (value: unknown): string => {
     if (value === null || value === undefined) {
       return "NULL";
@@ -141,7 +142,7 @@ export function DataTable({
 
   if (isLoading) {
     return (
-      <div className="flex flex-1 justify-center items-center text-muted-foreground">
+      <div className="flex flex-1 justify-center items-center text-neutral-500">
         加载中...
       </div>
     );
@@ -149,53 +150,41 @@ export function DataTable({
 
   if (columns.length === 0) {
     return (
-      <div className="flex flex-1 justify-center items-center text-muted-foreground">
-        <div className="text-center">
-          <AlertCircle className="opacity-50 mx-auto mb-4 size-12" />
-          <p>请选择一个表</p>
+      <div className="flex flex-1 flex-col justify-center items-center py-20">
+        <div className="size-14 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+          <Table2 className="size-7 text-neutral-400" />
         </div>
+        <p className="text-neutral-500 text-pretty">请选择一个数据表</p>
       </div>
     );
   }
 
   const hasPrimaryKey = !!pkColumn;
-
-  // 计算分页信息
   const totalPages = Math.ceil(total / pageSize);
   const startRow = (page - 1) * pageSize + 1;
   const endRow = Math.min(page * pageSize, total);
 
-  // 生成分页按钮
   const getPageNumbers = () => {
     const pages: (number | "ellipsis")[] = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible + 2) {
-      // 显示所有页码
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // 始终显示第一页
       pages.push(1);
-
       if (page > 3) {
         pages.push("ellipsis");
       }
-
-      // 当前页附近的页码
       const start = Math.max(2, page - 1);
       const end = Math.min(totalPages - 1, page + 1);
-
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
-
       if (page < totalPages - 2) {
         pages.push("ellipsis");
       }
-
-      // 始终显示最后一页
       pages.push(totalPages);
     }
 
@@ -204,13 +193,12 @@ export function DataTable({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* 操作栏 */}
-      <div className="flex justify-between items-center p-3 border-b">
-        <div className="text-muted-foreground text-sm">
+      <div className="flex justify-between items-center px-5 h-14 border-b border-neutral-100">
+        <div className="text-neutral-500 text-sm tabular-nums">
           共 {total} 行
           {total > 0 && `，显示第 ${startRow}-${endRow} 行`}
           {selectedIds.size > 0 && (
-            <span className="ml-2 text-foreground">
+            <span className="ml-2 text-neutral-900 font-medium">
               已选择 {selectedIds.size} 行
             </span>
           )}
@@ -219,8 +207,10 @@ export function DataTable({
           <Button
             variant="destructive"
             size="sm"
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
             disabled={isDeleting}
+            className="rounded-lg"
+            aria-label="删除选中的行"
           >
             <Trash2 className="size-4" />
             {isDeleting ? "删除中..." : `删除 (${selectedIds.size})`}
@@ -228,13 +218,12 @@ export function DataTable({
         )}
       </div>
 
-      {/* 表格 */}
       <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow className="hover:bg-transparent border-neutral-100">
               {hasPrimaryKey && (
-                <TableHead className="top-0 z-10 sticky bg-background w-10 min-w-10 max-w-10">
+                <TableHead className="top-0 z-10 sticky bg-white w-10 px-3">
                   <Checkbox
                     checked={rows.length > 0 && selectedIds.size === rows.length}
                     onCheckedChange={toggleSelectAll}
@@ -243,20 +232,20 @@ export function DataTable({
                 </TableHead>
               )}
               {columns.map((column) => (
-                <TableHead key={column.name} className="top-0 z-10 sticky bg-background text-foreground">
+                <TableHead key={column.name} className="top-0 z-10 sticky bg-white">
                   <div className="flex items-center gap-1 truncate">
                     <span 
-                      className="hover:text-primary truncate transition-colors cursor-pointer"
+                      className="hover:text-neutral-900 truncate transition-colors cursor-pointer text-neutral-600 font-medium"
                       onClick={() => copyColumnName(column.name)}
                       title="点击复制列名"
                     >
                       {column.name}
                     </span>
                     {column.isPrimaryKey && (
-                      <span className="text-primary text-xs shrink-0">(PK)</span>
+                      <span className="text-xs text-neutral-400 shrink-0">(PK)</span>
                     )}
                   </div>
-                  <div className="font-normal text-muted-foreground text-xs truncate">
+                  <div className="font-normal text-neutral-400 text-xs truncate">
                     {column.type}
                   </div>
                 </TableHead>
@@ -268,8 +257,11 @@ export function DataTable({
               <TableRow>
                 <TableCell
                   colSpan={columns.length + (hasPrimaryKey ? 1 : 0)}
-                  className="py-8 min-w-0 max-w-none text-muted-foreground text-center"
+                  className="py-20 text-neutral-500 text-center"
                 >
+                  <div className="size-14 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+                    <Table2 className="size-7 text-neutral-400" />
+                  </div>
                   没有数据
                 </TableCell>
               </TableRow>
@@ -282,9 +274,10 @@ export function DataTable({
                   <TableRow
                     key={rowId !== null ? `${rowId}-${index}` : index}
                     data-state={isSelected ? "selected" : undefined}
+                    className="border-neutral-100"
                   >
                     {hasPrimaryKey && (
-                      <TableCell className="w-10 min-w-10 max-w-10">
+                      <TableCell className="w-10 px-3">
                         {rowId !== null && (
                           <Checkbox
                             checked={isSelected}
@@ -300,13 +293,13 @@ export function DataTable({
                         <TableCell
                           key={column.name}
                           title={formatted}
-                          className="hover:bg-muted/50 transition-colors cursor-pointer"
+                          className="hover:bg-neutral-50 transition-colors cursor-pointer text-neutral-600"
                           onClick={() => copyToClipboard(formatted)}
                         >
                           <span
                             className={
                               row[column.name] === null
-                                ? "text-muted-foreground italic"
+                                ? "text-neutral-400 italic"
                                 : ""
                             }
                           >
@@ -323,9 +316,8 @@ export function DataTable({
         </Table>
       </div>
 
-      {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex justify-end items-center p-3 border-t">
+        <div className="flex justify-end items-center px-5 py-4 border-t border-neutral-100">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -360,6 +352,34 @@ export function DataTable({
           </Pagination>
         </div>
       )}
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription className="text-pretty">
+              确定要删除选中的 {selectedIds.size} 行数据吗？此操作不可撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              className="rounded-lg"
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="rounded-lg"
+            >
+              {isDeleting ? "删除中..." : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

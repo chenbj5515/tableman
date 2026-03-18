@@ -66,14 +66,11 @@ export function FilterBar({
   const [conditions, setConditions] = useState<FilterCondition[]>([]);
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({});
 
-  // 获取主键列
   const pkColumn = columns.find((col) => col.isPrimaryKey);
 
-  // 从 filters 初始化 conditions
   useEffect(() => {
     if (Object.keys(filters).length > 0) {
       const newConditions = Object.entries(filters).map(([key, value], index) => {
-        // 解析 column__operator 格式
         const parts = key.split("__");
         const column = parts[0];
         const operator = parts.length === 2 ? parts[1] : "equals";
@@ -91,9 +88,7 @@ export function FilterBar({
     }
   }, []);
 
-  // 添加新的筛选条件
   const addCondition = () => {
-    // 默认使用主键，如果没有主键则使用第一个字段
     const defaultColumn = pkColumn?.name || columns[0]?.name || "";
     const newCondition: FilterCondition = {
       id: `filter-${Date.now()}`,
@@ -104,33 +99,26 @@ export function FilterBar({
     setConditions([...conditions, newCondition]);
   };
 
-  // 删除筛选条件
   const removeCondition = (id: string) => {
     const newConditions = conditions.filter((c) => c.id !== id);
     setConditions(newConditions);
-    
-    // 自动应用筛选
     applyFilters(newConditions);
   };
 
-  // 更新筛选条件
   const updateCondition = (id: string, field: keyof FilterCondition, value: string) => {
     setConditions((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     );
   };
 
-  // 应用筛选
   const applyFilters = (conditionsToApply: FilterCondition[] = conditions) => {
     const activeFilters: Record<string, string> = {};
     conditionsToApply.forEach((c) => {
       if (c.column) {
-        // is_null 和 is_not_null 不需要值
         if (NO_VALUE_OPERATORS.includes(c.operator)) {
           const key = `${c.column}__${c.operator}`;
-          activeFilters[key] = "1"; // 用占位值
+          activeFilters[key] = "1";
         } else if (c.value) {
-          // 使用 column__operator=value 格式
           const key = `${c.column}__${c.operator}`;
           activeFilters[key] = c.value;
         }
@@ -139,22 +127,18 @@ export function FilterBar({
     onFilterChange(activeFilters);
   };
 
-  // 清除所有筛选
   const clearFilters = () => {
     setConditions([]);
     onFilterChange({});
   };
 
-  // 切换筛选面板
   const toggleFilters = () => {
     if (!showFilters && conditions.length === 0) {
-      // 第一次点击时，添加一个默认的筛选条件
       addCondition();
     }
     setShowFilters(!showFilters);
   };
 
-  // 处理回车键
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       applyFilters();
@@ -168,23 +152,24 @@ export function FilterBar({
   }
 
   return (
-    <div className="border-b">
-      <div className="p-3 flex items-center gap-2">
+    <div className="border-neutral-100 border-b">
+      <div className="flex items-center gap-2 px-5 py-3">
         <Button
           variant={showFilters ? "secondary" : "outline"}
           size="sm"
           onClick={toggleFilters}
+          className="rounded-lg"
         >
           <Filter className="size-4" />
           筛选
           {activeFilterCount > 0 && (
-            <span className="ml-1 bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 text-xs">
+            <span className="bg-neutral-900 ml-1 px-1.5 py-0.5 rounded-full tabular-nums text-white text-xs">
               {activeFilterCount}
             </span>
           )}
         </Button>
         {activeFilterCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-neutral-500">
             <X className="size-4" />
             清除筛选
           </Button>
@@ -192,25 +177,23 @@ export function FilterBar({
       </div>
 
       {showFilters && (
-        <div className="px-3 pb-3 space-y-2">
+        <div className="space-y-2 px-5 pb-4">
           {conditions.map((condition, index) => (
             <div key={condition.id} className="flex items-center gap-2">
-              {/* 删除按钮 */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 shrink-0"
+                className="size-7 text-neutral-400 hover:text-neutral-600 shrink-0"
                 onClick={() => removeCondition(condition.id)}
+                aria-label="删除筛选条件"
               >
                 <X className="size-4" />
               </Button>
 
-              {/* where/and 标签 */}
-              <span className="text-sm text-muted-foreground w-12 shrink-0">
+              <span className="w-12 text-neutral-400 text-sm shrink-0">
                 {index === 0 ? "where" : "and"}
               </span>
 
-              {/* 字段选择器 - 可搜索的 Combobox */}
               <Popover
                 open={openPopovers[condition.id]}
                 onOpenChange={(open) =>
@@ -222,15 +205,15 @@ export function FilterBar({
                     variant="outline"
                     role="combobox"
                     aria-expanded={openPopovers[condition.id]}
-                    className="w-40 justify-between text-sm h-8"
+                    className="justify-between rounded-lg w-40 h-8 text-sm"
                   >
                     <span className="truncate">
                       {condition.column || "选择字段"}
                     </span>
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <ChevronDown className="opacity-50 ml-2 w-4 h-4 shrink-0" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-48 p-0" align="start">
+                <PopoverContent className="p-0 rounded-xl w-48" align="start">
                   <Command>
                     <CommandInput placeholder="搜索字段..." />
                     <CommandList>
@@ -250,7 +233,7 @@ export function FilterBar({
                           >
                             <Check
                               className={cn(
-                                "mr-2 h-4 w-4",
+                                "mr-2 w-4 h-4",
                                 condition.column === column.name
                                   ? "opacity-100"
                                   : "opacity-0"
@@ -258,7 +241,7 @@ export function FilterBar({
                             />
                             <span className="truncate">{column.name}</span>
                             {column.isPrimaryKey && (
-                              <span className="ml-1 text-xs text-primary">(PK)</span>
+                              <span className="ml-1 text-neutral-400 text-xs">(PK)</span>
                             )}
                           </CommandItem>
                         ))}
@@ -268,17 +251,16 @@ export function FilterBar({
                 </PopoverContent>
               </Popover>
 
-              {/* 操作符选择器 */}
               <Select
                 value={condition.operator}
                 onValueChange={(value) =>
                   updateCondition(condition.id, "operator", value)
                 }
               >
-                <SelectTrigger className="w-28 h-8 text-sm">
+                <SelectTrigger className="rounded-lg w-28 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {OPERATORS.map((op) => (
                     <SelectItem key={op.value} value={op.value}>
                       {op.label}
@@ -287,7 +269,6 @@ export function FilterBar({
                 </SelectContent>
               </Select>
 
-              {/* 值输入框 - is_null 和 is_not_null 不需要 */}
               {!NO_VALUE_OPERATORS.includes(condition.operator) && (
                 <Input
                   placeholder="输入值"
@@ -296,33 +277,32 @@ export function FilterBar({
                     updateCondition(condition.id, "value", e.target.value)
                   }
                   onKeyDown={handleKeyDown}
-                  className="flex-1 h-8 text-sm min-w-32"
+                  className="flex-1 rounded-lg min-w-32 h-8 text-sm"
                 />
               )}
             </div>
           ))}
 
-          {/* 操作按钮 */}
           <div className="flex items-center gap-2 pt-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={addCondition}
-              className="text-muted-foreground"
+              className="text-neutral-500"
             >
               <Plus className="size-4" />
               添加筛选
             </Button>
             {conditions.length > 0 && (
               <>
-                <Button size="sm" onClick={() => applyFilters()}>
+                <Button size="sm" onClick={() => applyFilters()} className="rounded-lg">
                   应用
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="text-muted-foreground"
+                  className="text-neutral-500"
                 >
                   清除筛选
                 </Button>
